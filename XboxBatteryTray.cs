@@ -475,11 +475,12 @@ static class BatteryReader
 
     public static BatteryStatus Read()
     {
-        BatteryStatus gi = null;
-        try { gi = GamingInput.Read(); }
-        catch { }
+        // USB: Windows.Gaming.Input gives the level and charge status.
+        BatteryStatus gi = ReadGamingInput(false);
         if (gi != null) return gi;
 
+        // Bluetooth: use the level Windows shows in Settings. Windows.Gaming.Input
+        // misreports Bluetooth controllers (e.g. 100/1000 when the controller is full).
         BatteryStatus best = null;
         foreach (var enumerator in new[] { "BTHLE", "BTHENUM" })
         {
@@ -490,9 +491,19 @@ static class BatteryReader
         }
         if (best != null && best.Connected) return best;
 
+        // Xbox Wireless Adapter: no Bluetooth device, so fall back to the other APIs.
+        gi = ReadGamingInput(true);
+        if (gi != null) return gi;
+
         var xi = ReadXInput();
         if (xi != null) return xi;
         return best ?? new BatteryStatus();
+    }
+
+    static BatteryStatus ReadGamingInput(bool wireless)
+    {
+        try { return GamingInput.Read(wireless); }
+        catch { return null; }
     }
 
     static System.Collections.Generic.IEnumerable<BatteryStatus> ReadBluetooth(string enumerator)
@@ -570,11 +581,12 @@ static class GamingInput
         Windows.Gaming.Input.Gamepad.GamepadRemoved += (s, e) => changed();
     }
 
-    public static BatteryStatus Read()
+    public static BatteryStatus Read(bool wireless)
     {
         BatteryStatus best = null;
         foreach (var pad in Windows.Gaming.Input.Gamepad.Gamepads)
         {
+            if (pad.IsWireless != wireless) continue;
             var report = pad.TryGetBatteryReport();
             if (report == null) continue;
 
