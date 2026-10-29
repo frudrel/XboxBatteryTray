@@ -316,8 +316,12 @@ static class IconPainter
                 label = st.Percent >= 100 ? "F" : st.Percent.ToString();
             }
 
+            // Full: the Xbox logo instead of a number.
+            bool logo = label == "F" && Logo != null;
+            if (logo) color = Green;
+
             // Charging: a large bolt behind the number.
-            if (st.Connected && st.Wired)
+            if (st.Connected && st.Wired && !logo)
                 DrawBolt(g, new RectangleF(size * 0.12f, 0, size * 0.76f, size), Color.FromArgb(230, BoltColor), size);
 
             // Fill bar along the bottom edge.
@@ -328,6 +332,14 @@ static class IconPainter
                     g.FillRectangle(bg, 0, size - barH, size, barH);
                 using (var fill = new SolidBrush(st.Charging ? Blue : color))
                     g.FillRectangle(fill, 0, size - barH, Math.Max(1, size * Math.Min(st.Percent, 100) / 100), barH);
+            }
+
+            if (logo)
+            {
+                int side = size - barH - 1;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(Logo, new Rectangle((size - side) / 2, 0, side, side));
+                return Icon.FromHandle(bmp.GetHicon());
             }
 
             // Number, sized to fill the remaining space.
@@ -346,6 +358,32 @@ static class IconPainter
 
             return Icon.FromHandle(bmp.GetHicon());
         }
+    }
+
+    // Embedded by build.cmd; its alpha channel is used as a stencil and filled green.
+    static readonly Bitmap Logo = LoadLogo();
+
+    static Bitmap LoadLogo()
+    {
+        try
+        {
+            using (var s = typeof(IconPainter).Assembly.GetManifestResourceStream("XboxLogo.png"))
+            {
+                if (s == null) return null;
+                using (var source = new Bitmap(s))
+                    return Tint(source, Green);
+            }
+        }
+        catch { return null; }
+    }
+
+    static Bitmap Tint(Bitmap source, Color color)
+    {
+        var result = new Bitmap(source.Width, source.Height);
+        for (int y = 0; y < source.Height; y++)
+            for (int x = 0; x < source.Width; x++)
+                result.SetPixel(x, y, Color.FromArgb(source.GetPixel(x, y).A, color));
+        return result;
     }
 
     static void DrawBolt(Graphics g, RectangleF r, Color color, int size)
