@@ -306,7 +306,7 @@ static class IconPainter
 
             Color color;
             string label;
-            if (!st.Connected) { color = Grey; label = st.Percent >= 0 ? st.Percent.ToString() : "–"; }
+            if (!st.Connected) { color = Grey; label = st.Percent >= 100 ? "F" : st.Percent >= 0 ? st.Percent.ToString() : "–"; }
             else if (st.Percent < 0) { color = Color.White; label = "?"; }
             else if (st.Full) { color = Green; label = "F"; }
             else if (st.Charging) { color = Color.White; label = st.Percent >= 100 ? "F" : st.Percent.ToString(); }
@@ -316,12 +316,12 @@ static class IconPainter
                 label = st.Percent >= 100 ? "F" : st.Percent.ToString();
             }
 
-            // Full: a controller icon instead of a number.
-            bool logo = label == "F" && Logo != null;
-            if (logo) color = Green;
+            // Full: a controller icon instead of a number (grey when it's the last known level).
+            Bitmap logo = label == "F" ? (st.Connected ? GreenLogo : GreyLogo) : null;
+            if (logo != null && st.Connected) color = Green;
 
             // Charging: a large bolt behind the number.
-            if (st.Connected && st.Wired && !logo)
+            if (st.Connected && st.Wired && logo == null)
                 DrawBolt(g, new RectangleF(size * 0.12f, 0, size * 0.76f, size), Color.FromArgb(230, BoltColor), size);
 
             // Fill bar along the bottom edge.
@@ -334,14 +334,14 @@ static class IconPainter
                     g.FillRectangle(fill, 0, size - barH, Math.Max(1, size * Math.Min(st.Percent, 100) / 100), barH);
             }
 
-            if (logo)
+            if (logo != null)
             {
                 // Fit inside the space above the bar, keeping the aspect ratio.
                 float room = size - barH - 1;
-                float scale = Math.Min(size / (float)Logo.Width, room / Logo.Height);
-                float w = Logo.Width * scale, h = Logo.Height * scale;
+                float scale = Math.Min(size / (float)logo.Width, room / logo.Height);
+                float w = logo.Width * scale, h = logo.Height * scale;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.DrawImage(Logo, new RectangleF((size - w) / 2, (room - h) / 2, w, h));
+                g.DrawImage(logo, new RectangleF((size - w) / 2, (room - h) / 2, w, h));
                 return Icon.FromHandle(bmp.GetHicon());
             }
 
@@ -363,10 +363,11 @@ static class IconPainter
         }
     }
 
-    // Embedded by build.cmd; its alpha channel is used as a stencil and filled green.
-    static readonly Bitmap Logo = LoadLogo();
+    // Embedded by build.cmd; its alpha channel is used as a stencil.
+    static readonly Bitmap GreenLogo = LoadLogo(Green);
+    static readonly Bitmap GreyLogo = LoadLogo(Grey);
 
-    static Bitmap LoadLogo()
+    static Bitmap LoadLogo(Color color)
     {
         try
         {
@@ -374,7 +375,7 @@ static class IconPainter
             {
                 if (s == null) return null;
                 using (var source = new Bitmap(s))
-                    return Tint(source, Green);
+                    return Tint(source, color);
             }
         }
         catch { return null; }
