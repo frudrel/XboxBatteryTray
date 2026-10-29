@@ -4,7 +4,7 @@ A small Windows tray app that shows your Xbox controller's battery level in the 
 
 ## Features
 
-- **Battery percentage in the tray icon**, colored by level (green > 50%, yellow > 20%, red ≤ 20%) with a fill bar. A green Xbox logo means fully charged.
+- **Battery percentage in the tray icon**, colored by level (green > 50%, yellow > 20%, red ≤ 20%) with a fill bar. A green controller icon means fully charged.
 - **Time remaining estimate** – learns how fast your battery drains while the controller is on (time it's switched off doesn't count) and remembers it between restarts.
 - **Charging over USB** – shows a lightning bolt, the charge level and an estimated time until full, plus a notification when it's fully charged.
 - **Low battery notification** – once per discharge, at 10% by default (5–25% or off, from the right-click menu).
@@ -25,7 +25,7 @@ No SDK needed – it builds with the C# compiler that ships with Windows (.NET F
 build.cmd
 ```
 
-This produces `XboxBatteryTray.exe` next to the source, with `xbox-logo.png` embedded.
+This produces `XboxBatteryTray.exe` next to the source, with `xbox-controller.png` embedded.
 
 ## How it reads the battery
 

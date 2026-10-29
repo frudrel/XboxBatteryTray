@@ -316,7 +316,7 @@ static class IconPainter
                 label = st.Percent >= 100 ? "F" : st.Percent.ToString();
             }
 
-            // Full: the Xbox logo instead of a number.
+            // Full: a controller icon instead of a number.
             bool logo = label == "F" && Logo != null;
             if (logo) color = Green;
 
@@ -336,9 +336,12 @@ static class IconPainter
 
             if (logo)
             {
-                int side = size - barH - 1;
+                // Fit inside the space above the bar, keeping the aspect ratio.
+                float room = size - barH - 1;
+                float scale = Math.Min(size / (float)Logo.Width, room / Logo.Height);
+                float w = Logo.Width * scale, h = Logo.Height * scale;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.DrawImage(Logo, new Rectangle((size - side) / 2, 0, side, side));
+                g.DrawImage(Logo, new RectangleF((size - w) / 2, (room - h) / 2, w, h));
                 return Icon.FromHandle(bmp.GetHicon());
             }
 
@@ -367,7 +370,7 @@ static class IconPainter
     {
         try
         {
-            using (var s = typeof(IconPainter).Assembly.GetManifestResourceStream("XboxLogo.png"))
+            using (var s = typeof(IconPainter).Assembly.GetManifestResourceStream("FullIcon.png"))
             {
                 if (s == null) return null;
                 using (var source = new Bitmap(s))
@@ -377,12 +380,23 @@ static class IconPainter
         catch { return null; }
     }
 
+    // Tints the opaque pixels and crops away the transparent margin.
     static Bitmap Tint(Bitmap source, Color color)
     {
-        var result = new Bitmap(source.Width, source.Height);
+        int minX = source.Width, minY = source.Height, maxX = -1, maxY = -1;
         for (int y = 0; y < source.Height; y++)
             for (int x = 0; x < source.Width; x++)
-                result.SetPixel(x, y, Color.FromArgb(source.GetPixel(x, y).A, color));
+                if (source.GetPixel(x, y).A > 0)
+                {
+                    minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                    minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
+                }
+        if (maxX < 0) return null;
+
+        var result = new Bitmap(maxX - minX + 1, maxY - minY + 1);
+        for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+                result.SetPixel(x - minX, y - minY, Color.FromArgb(source.GetPixel(x, y).A, color));
         return result;
     }
 
