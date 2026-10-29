@@ -87,6 +87,15 @@ class TrayContext : ApplicationContext
         tray.Visible = true;
         tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) Update(); };
 
+        // When started at login the taskbar may not be ready yet, and Windows silently
+        // drops the icon. Re-add it a few times early on, and again after waking up.
+        ReAddIconAfter(5, 15, 30, 60, 120);
+        SystemEvents.PowerModeChanged += (s, e) =>
+        {
+            if (e.Mode == PowerModes.Resume)
+                try { invoker.BeginInvoke(new MethodInvoker(() => ReAddIconAfter(5, 30))); } catch { }
+        };
+
         // Refresh right away when a controller is plugged in, unplugged or turned on/off.
         BatteryReader.WatchControllers(() =>
         {
@@ -153,6 +162,22 @@ class TrayContext : ApplicationContext
             fullNotified = true;
         }
         if (!st.Wired) fullNotified = true;
+    }
+
+    void ReAddIconAfter(params int[] seconds)
+    {
+        foreach (int s in seconds)
+        {
+            var t = new Timer { Interval = s * 1000 };
+            t.Tick += delegate
+            {
+                t.Stop();
+                t.Dispose();
+                tray.Visible = false;
+                tray.Visible = true;
+            };
+            t.Start();
+        }
     }
 
     // Warns once per discharge; re-arms after charging, a battery swap or a rise well above the threshold.
